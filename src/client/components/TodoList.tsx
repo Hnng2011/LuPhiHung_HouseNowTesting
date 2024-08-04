@@ -1,6 +1,9 @@
 import type { SVGProps } from 'react'
 
 import * as Checkbox from '@radix-ui/react-checkbox'
+import { useAutoAnimate } from '@formkit/auto-animate/react'
+import { useMemo } from 'react'
+import { Inter } from 'next/font/google'
 
 import { api } from '@/utils/client/api'
 
@@ -10,7 +13,7 @@ import { api } from '@/utils/client/api'
  * A todo has 2 statuses: "pending" and "completed"
  *  - "pending" state is represented by an unchecked checkbox
  *  - "completed" state is represented by a checked checkbox, darker background,
- *    and a line-through text
+ *    and a line-through <textarea name="" id=""></textarea>
  *
  * We have 2 backend apis:
  *  - (1) `api.todo.getAll`       -> a query to get all todos
@@ -63,28 +66,91 @@ import { api } from '@/utils/client/api'
  *  - https://auto-animate.formkit.com
  */
 
-export const TodoList = () => {
-  const { data: todos = [] } = api.todo.getAll.useQuery({
+const inter500 = Inter({
+  weight: '500',
+  subsets: ['latin'],
+})
+
+export const TodoList = ({ tab }: { tab: string }) => {
+  const [parent] = useAutoAnimate()
+
+  const { data: todos = [], refetch } = api.todo.getAll.useQuery({
     statuses: ['completed', 'pending'],
   })
 
+  const statusTodos = useMemo(
+    () => todos.filter((todo) => tab === 'all' || todo.status === tab),
+    [todos, tab]
+  )
+
+  const { mutate: deleteTodo } = api.todo.delete.useMutation({
+    onSuccess: () => {
+      refetch()
+    },
+  })
+
+  const { mutate: changeStatus } = api.todoStatus.update.useMutation({
+    onSuccess: () => {
+      refetch()
+    },
+  })
+
+  const handleChangeStatus = ({
+    status,
+    todoId,
+  }: {
+    status: 'completed' | 'pending'
+    todoId: number
+  }) => {
+    changeStatus({ status, todoId })
+  }
+
+  const handleDeleteTodo = ({ todoId }: { todoId: number }) => {
+    deleteTodo({ id: todoId })
+  }
+
   return (
-    <ul className="grid grid-cols-1 gap-y-3">
-      {todos.map((todo) => (
+    <ul className="grid grid-cols-1 gap-y-3" ref={parent}>
+      {statusTodos.map((todo) => (
         <li key={todo.id}>
-          <div className="flex items-center rounded-12 border border-gray-200 px-4 py-3 shadow-sm">
+          <div
+            className={`flex items-center rounded-12 border border-gray-200 px-4 py-3 shadow-sm ${
+              todo.status === 'completed' &&
+              'border-gray-200 bg-gray-50 text-gray-500 line-through'
+            }`}
+          >
             <Checkbox.Root
+              checked={todo.status === 'completed' ? true : false}
+              onCheckedChange={() =>
+                handleChangeStatus({
+                  status: todo.status === 'completed' ? 'pending' : 'completed',
+                  todoId: todo.id,
+                })
+              }
               id={String(todo.id)}
-              className="flex h-6 w-6 items-center justify-center rounded-6 border border-gray-300 focus:border-gray-700 focus:outline-none data-[state=checked]:border-gray-700 data-[state=checked]:bg-gray-700"
+              className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-6 border border-gray-300 focus:border-gray-700 focus:outline-none data-[state=checked]:border-gray-700 data-[state=checked]:bg-gray-700"
             >
               <Checkbox.Indicator>
                 <CheckIcon className="h-4 w-4 text-white" />
               </Checkbox.Indicator>
             </Checkbox.Root>
 
-            <label className="block pl-3 font-medium" htmlFor={String(todo.id)}>
+            <label
+              className={`block flex-shrink-0 pl-3 ${inter500.className}`}
+              htmlFor={String(todo.id)}
+            >
               {todo.body}
             </label>
+
+            <div className="flex w-full justify-end">
+              <button
+                onClick={() => handleDeleteTodo({ todoId: todo.id })}
+                type="button"
+                className="h-[32px] w-[32px] p-[4px]"
+              >
+                <XMarkIcon className="h-full w-full" />
+              </button>
+            </div>
           </div>
         </li>
       ))}

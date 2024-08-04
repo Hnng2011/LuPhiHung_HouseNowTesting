@@ -1,8 +1,11 @@
+import type { FormEvent } from 'react'
+
 import { useState } from 'react'
 
 import { api } from '@/utils/client/api'
 
 /**
+ 
  * QUESTION 1:
  * -----------
  * Style the "Add" button so that it looks like the design in Figma.
@@ -35,8 +38,19 @@ export const CreateTodoForm = () => {
       },
     })
 
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    createTodo({
+      body: todoBody,
+    })
+    setTodoBody('')
+  }
+
   return (
-    <form className="group flex items-center justify-between rounded-12 border border-gray-200 py-2 pr-4 focus-within:border-gray-400">
+    <form
+      onSubmit={(e) => handleSubmit(e)}
+      className="group flex items-center justify-between rounded-12 border border-gray-200 py-2 pr-4 focus-within:border-gray-400"
+    >
       <label htmlFor={TODO_INPUT_ID} className="sr-only">
         Add todo
       </label>
@@ -53,14 +67,9 @@ export const CreateTodoForm = () => {
       />
 
       <button
-        type="button"
+        className="rounded-full bg-gray-700 px-[20px] py-[8px] text-[14px] text-white"
+        type="submit"
         disabled={isCreatingTodo}
-        onClick={() => {
-          createTodo({
-            body: todoBody,
-          })
-          setTodoBody('')
-        }}
       >
         Add
       </button>
